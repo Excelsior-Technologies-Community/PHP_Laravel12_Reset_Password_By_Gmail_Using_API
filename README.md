@@ -809,4 +809,7 @@ PHP_Laravel12_Reset_Password_By_Gmail_Using_API/
 ---
 
 Your PHP_Laravel12_Reset_Password_By_Gmail_Using_API Project is now Ready!
+<<<<<<< HEAD
 
+=======
+>>>>>>> development
