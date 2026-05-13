@@ -17,15 +17,19 @@ class AuthController extends Controller
             'password' => 'required|confirmed|min:6',
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'status' => true,
-            'message' => 'User registered successfully'
+            'message' => 'User registered successfully',
+            'token' => $token,
+            'user' => $user
         ]);
     }
 
@@ -45,9 +49,23 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'status' => true,
-            'message' => 'Login successful'
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $user
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Logged out successfully'
         ]);
     }
 }

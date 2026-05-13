@@ -13,54 +13,44 @@ use Carbon\Carbon;
 
 class PasswordResetController extends Controller
 {
-    // SEND RESET TOKEN
     public function forgotPassword(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email'
-    ]);
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
 
-    if (!$user) {
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found'
+            ]);
+        }
+
+        $token = Str::random(64);
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'token' => $token,
+                'created_at' => Carbon::now()
+            ]
+        );
+
+        $url = url('/reset-password?token='.$token.'&email='.$request->email);
+
+        Mail::send('emails.reset', ['url' => $url], function ($message) use ($request) {
+            $message->to($request->email)
+                ->subject('Reset Password Notification');
+        });
+
         return response()->json([
-            'status' => false,
-            'message' => 'User not found'
+            'status' => true,
+            'message' => 'Reset password link sent to email'
         ]);
     }
 
-    $token = Str::random(64);
-
-    DB::table('password_reset_tokens')->updateOrInsert(
-        ['email' => $request->email],
-        [
-            'token' => $token,
-            'created_at' => Carbon::now()
-        ]
-    );
-
-    $resetLink = url('/reset-password?token='.$token.'&email='.$request->email);
-
-    Mail::send([], [], function ($message) use ($request, $resetLink) {
-        $message->to($request->email)
-            ->subject('Reset Password')
-            ->html("
-                <p>Click the button below to reset your password:</p>
-                <a href='$resetLink' 
-                   style='padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:5px;'>
-                   Reset Password
-                </a>
-            ");
-    });
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Reset password link sent to email'
-    ]);
-}
-
-   
-    // RESET PASSWORD
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -75,10 +65,13 @@ class PasswordResetController extends Controller
             ->first();
 
         if (!$record) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid or expired token'
-            ]);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid or expired token'
+                ]);
+            }
+            return back()->withErrors(['message' => 'Invalid or expired token']);
         }
 
         User::where('email', $request->email)->update([
@@ -89,7 +82,6 @@ class PasswordResetController extends Controller
             ->where('email', $request->email)
             ->delete();
 
-            // ✅ THIS IS THE KEY LINE
-    return back()->with('success', 'Password reset successful');
+        return back()->with('success', 'Password reset successful! You can now login.');
     }
 }
